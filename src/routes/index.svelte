@@ -14,6 +14,9 @@
     'KeyA'
   ];
 
+  const KONAMI_SWIPES = KONAMI.slice(0, 8);
+  const SWIPE_THRESHOLD = 48;
+
   const LOADING_MESSAGES = [
     'Authenticating with SSO…',
     'Validating worktags…',
@@ -44,10 +47,39 @@
   let errorIndex = 0;
   let typedBuffer = '';
   let konamiIndex = 0;
+  let swipeKonamiIndex = 0;
+  let touchStartX = 0;
+  let touchStartY = 0;
   let showHint = false;
+  let isTouchDevice = false;
 
   let loadingInterval;
   let errorInterval;
+
+  function directionFromSwipe(dx, dy) {
+    if (Math.abs(dx) < SWIPE_THRESHOLD && Math.abs(dy) < SWIPE_THRESHOLD) {
+      return null;
+    }
+
+    if (Math.abs(dx) > Math.abs(dy)) {
+      return dx > 0 ? 'ArrowRight' : 'ArrowLeft';
+    }
+
+    return dy > 0 ? 'ArrowDown' : 'ArrowUp';
+  }
+
+  function advanceKonamiSequence(sequence, index, direction) {
+    if (direction === sequence[index]) {
+      const nextIndex = index + 1;
+      if (nextIndex === sequence.length) {
+        activateEasterEgg();
+        return 0;
+      }
+      return nextIndex;
+    }
+
+    return direction === sequence[0] ? 1 : 0;
+  }
 
   function activateEasterEgg() {
     if (easterEggActive) return;
@@ -106,16 +138,8 @@
 
     if (easterEggActive) return;
 
-    // Konami code
-    if (e.code === KONAMI[konamiIndex]) {
-      konamiIndex++;
-      if (konamiIndex === KONAMI.length) {
-        konamiIndex = 0;
-        activateEasterEgg();
-      }
-    } else {
-      konamiIndex = 0;
-    }
+    // Konami code (keyboard — includes B A)
+    konamiIndex = advanceKonamiSequence(KONAMI, konamiIndex, e.code);
 
     // Type "workday"
     if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) {
@@ -127,7 +151,34 @@
     }
   }
 
+  function handleTouchStart(e) {
+    if (easterEggActive) return;
+    const touch = e.touches[0];
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+  }
+
+  function handleTouchEnd(e) {
+    if (easterEggActive) return;
+    const touch = e.changedTouches[0];
+    const direction = directionFromSwipe(
+      touch.clientX - touchStartX,
+      touch.clientY - touchStartY
+    );
+
+    if (!direction) return;
+
+    // Konami swipes — arrows only, no B A
+    swipeKonamiIndex = advanceKonamiSequence(
+      KONAMI_SWIPES,
+      swipeKonamiIndex,
+      direction
+    );
+  }
+
   onMount(() => {
+    isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
+
     const hintTimer = setTimeout(() => {
       showHint = true;
     }, 8000);
@@ -140,12 +191,22 @@
   });
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window
+  on:keydown={handleKeydown}
+  on:touchstart={handleTouchStart}
+  on:touchend={handleTouchEnd}
+/>
 
 <marquee on:click={() => (showHint = true)}>Not Workday</marquee>
 
 {#if showHint && !easterEggActive}
-  <p class="hint">↑↑↓↓←→←→BA</p>
+  <p class="hint">
+    {#if isTouchDevice}
+      swipe ↑↑↓↓←→←→
+    {:else}
+      ↑↑↓↓←→←→BA
+    {/if}
+  </p>
 {/if}
 
 {#if easterEggActive}
