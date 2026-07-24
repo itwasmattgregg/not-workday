@@ -290,6 +290,7 @@
     justify-content: center;
     z-index: 9999;
     padding: 16px;
+    overflow-y: auto;
   }
 
   .workday-window {
@@ -297,6 +298,7 @@
     border-radius: 4px;
     width: 100%;
     max-width: 520px;
+    margin: auto;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     overflow: hidden;
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
@@ -400,8 +402,6 @@
 
   .error-list {
     text-align: left;
-    max-height: 180px;
-    overflow-y: auto;
   }
 
   .error-msg {
